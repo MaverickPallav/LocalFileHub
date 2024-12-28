@@ -12,15 +12,23 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 class UploadRequest(BaseModel):
     filePath: str
-    overwrite: bool = False
+    overwrite: bool = True
+    fileName: str = None
 
 @app.post("/upload")
 async def upload_file(request: UploadRequest):
     try:
-        file_name = os.path.basename(request.filePath)
+        file_path_name = os.path.basename(request.filePath)
+        file_name = request.fileName if request.fileName else file_path_name
 
         if not os.path.exists(request.filePath):
             raise HTTPException(status_code=404, detail="File not found at the specified path")
+
+        if request.fileName:
+            file_path_base, file_path_ext = os.path.splitext(file_path_name)
+            file_name_base, file_name_ext = os.path.splitext(file_name)
+            if file_path_ext != file_name_ext:
+                raise HTTPException(status_code=400, detail="File extension mismatch")
 
         if request.overwrite:
             destination_filename = file_name
