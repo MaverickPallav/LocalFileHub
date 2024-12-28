@@ -1,7 +1,8 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 import os
 import time
+from pydantic import BaseModel
 
 app = FastAPI()
 
@@ -9,15 +10,19 @@ UPLOAD_FOLDER = "uploads"
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-@app.post("/upload")
-async def upload_file(filePath: str, overwrite: bool = Query(default=False, description="Overwrite existing file if True")):
-    try:
-        file_name = os.path.basename(filePath)
+class UploadRequest(BaseModel):
+    filePath: str
+    overwrite: bool = False
 
-        if not os.path.exists(filePath):
+@app.post("/upload")
+async def upload_file(request: UploadRequest):
+    try:
+        file_name = os.path.basename(request.filePath)
+
+        if not os.path.exists(request.filePath):
             raise HTTPException(status_code=404, detail="File not found at the specified path")
 
-        if overwrite:
+        if request.overwrite:
             destination_filename = file_name
         else:
             milliseconds_since_epoch = int(time.time() * 1000)
@@ -26,7 +31,7 @@ async def upload_file(filePath: str, overwrite: bool = Query(default=False, desc
 
         destination_path = os.path.join(UPLOAD_FOLDER, destination_filename)
 
-        with open(filePath, "rb") as src_file:
+        with open(request.filePath, "rb") as src_file:
             with open(destination_path, "wb") as dest_file:
                 dest_file.write(src_file.read())
 
